@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ベンチアイ カメラの試し（camtest）</title>
+<style>
+  :root{--bg:#111;--fg:#eee;--sub:#9aa;--acc:#4fc3f7;--ok:#7bd88f;--ng:#ff7b7b;--warn:#ffd166}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px;line-height:1.5}
+  header{padding:10px 14px;border-bottom:1px solid #333}
+  h1{font-size:17px;margin:0}
+  .note{color:var(--sub);font-size:13px}
+  main{padding:10px 14px;display:grid;gap:12px}
+  section{background:#1b1b1b;border:1px solid #2c2c2c;border-radius:10px;padding:10px 12px}
+  h2{font-size:15px;margin:0 0 6px}
+  button{font:inherit;padding:9px 14px;margin:3px 4px 3px 0;border-radius:8px;border:1px solid #444;background:#2a2a2a;color:var(--fg)}
+  button.main{background:#0d4f6e;border-color:#1b7aa5}
+  button:disabled{opacity:.45}
+  select{font:inherit;padding:6px;border-radius:6px;background:#222;color:var(--fg);border:1px solid #444}
+  #stage{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;touch-action:none}
+  #stage video{display:block;width:100%;height:auto}
+  #ov{position:absolute;left:0;top:0;width:100%;height:100%}
+  pre{white-space:pre-wrap;word-break:break-all;background:#0c0c0c;border:1px solid #2a2a2a;border-radius:8px;padding:8px;font-size:12.5px;max-height:320px;overflow:auto;margin:6px 0 0}
+  .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  .pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid #444}
+  .ok{color:var(--ok)}.ng{color:var(--ng)}.warn{color:var(--warn)}
+  a{color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <h1>ベンチアイ カメラの試し（camtest）</h1>
+  <div class="note">iPad の Safari で開いて、上から順に押してください。結果は一番下の「結果のまとめ」をコピーして送ってください。</div>
+</header>
+<main>
+
+<section>
+  <h2>1. カメラを開く（できるだけ高い解像度）</h2>
+  <div class="row">
+    <label>求める解像度
+      <select id="res">
+        <option value="3840x2160">4K（3840×2160）</option>
+        <option value="1920x1080">1080p（1920×1080）</option>
+        <option value="1280x720">720p（1280×720）</option>
+      </select>
+    </label>
+    <label>コマ数
+      <select id="fps"><option>30</option><option>60</option></select>
+    </label>
+    <button class="main" id="bOpen">カメラを開く</button>
+    <button id="bStop" disabled>閉じる</button>
+  </div>
+  <div class="note">背面のカメラ（広角）を使います。初めて開くと、カメラの使用の許可を求められます。</div>
+</section>
+
+<section>
+  <h2>2. 画角とコートのガイド</h2>
+  <div id="stage">
+    <video id="v" playsinline muted autoplay></video>
+    <canvas id="ov"></canvas>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <button id="bGuide">ガイドの表示：オン</button>
+    <button id="bReset">ガイドを初めの位置に</button>
+    <button id="bGrid">三分割の線：オフ</button>
+    <button id="bSnap" disabled>静止画を保存（実際の解像度）</button>
+  </div>
+  <div class="note">黄色の点（コートの 4 つの角と、センターラインの両端）を指で動かして、実際のコートの線に重ねてください。
+  角が画面の端から 3% 以内に入ると赤くなります（余白が足りない）。点の位置は、この端末に覚えておきます。</div>
+</section>
+
+<section>
+  <h2>3. 設定の確かめ（露出・ピント・ズームなど）</h2>
+  <div class="row">
+    <button id="bCaps" disabled>使える設定を調べる</button>
+    <button id="bLock" disabled>露出・ピントの固定を試す</button>
+  </div>
+  <pre id="caps">（カメラを開いてから押してください）</pre>
+</section>
+
+<section>
+  <h2>4. 録画の試し</h2>
+  <div class="row">
+    <label>長さ
+      <select id="dur"><option value="10">10 秒</option><option value="60" selected>60 秒</option><option value="300">5 分</option></select>
+    </label>
+    <label>形式
+      <select id="mime"></select>
+    </label>
+    <button class="main" id="bRec" disabled>録画を始める</button>
+    <button id="bRecStop" disabled>止める</button>
+    <span id="recState" class="pill">待機</span>
+  </div>
+  <pre id="recInfo">（カメラを開いてから押してください）</pre>
+  <div id="dl"></div>
+  <div class="note">録画したものはこの画面で再生して、本当の解像度と大きさを調べます。「保存」で端末に残せます（確かめた後は消してかまいません）。</div>
+</section>
+
+<section>
+  <h2>5. 画面を消えないようにする</h2>
+  <div class="row"><button id="bWake">画面を点けたままにする</button><span id="wakeState" class="pill">未設定</span></div>
+  <div class="note">長い録画の間に画面が消えると、ブラウザの録画は止まるおそれがあります。</div>
+</section>
+
+<section>
+  <h2>結果のまとめ（コピーして送ってください）</h2>
+  <div class="row"><button class="main" id="bCopy">まとめをコピー</button></div>
+  <pre id="log"></pre>
+</section>
+
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const v=$('v'),ov=$('ov'),ctx=ov.getContext('2d');
+let stream=null,track=null,rec=null,chunks=[],recTimer=null,recStart=0,wake=null;
+const LOG=[];
+function log(k,val){LOG.push(k+'：'+(typeof val==='string'?val:JSON.stringify(val)));$('log').textContent=LOG.join('\n');}
+function store(k,val){try{if(val===undefined)return JSON.parse(localStorage.getItem(k));localStorage.setItem(k,JSON.stringify(val));}catch(e){return null;}}
+
+log('端末',navigator.userAgent);
+log('画面',`${screen.width}×${screen.height}（倍率 ${devicePixelRatio}）`);
+log('https（安全な接続）',String(window.isSecureContext));
+log('カメラの API',String(!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)));
+log('録画の API（MediaRecorder）',String(typeof MediaRecorder!=='undefined'));
+
+// 録画の形式
+const MIMES=['video/mp4;codecs=hvc1','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'];
+const okM=typeof MediaRecorder!=='undefined'?MIMES.filter(m=>{try{return MediaRecorder.isTypeSupported(m)}catch(e){return false}}):[];
+log('録画できる形式',okM.length?okM.join(', '):'なし');
+$('mime').innerHTML=okM.map(m=>`<option>${m}</option>`).join('')||'<option>（なし）</option>';
+
+// 1. カメラを開く
+$('bOpen').onclick=async()=>{
+  try{
+    if(stream)stopCam();
+    const [w,h]=$('res').value.split('x').map(Number),fps=+$('fps').value;
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:w},height:{ideal:h},frameRate:{ideal:fps}}});
+    track=stream.getVideoTracks()[0];v.srcObject=stream;await v.play().catch(()=>{});
+    const s=track.getSettings();
+    log(`カメラ（求めた ${w}×${h}・${fps}）`,`得られた ${s.width}×${s.height}・${s.frameRate ? Math.round(s.frameRate) : '?'} コマ/秒（${track.label||'名前なし'}）`);
+    ['bStop','bSnap','bCaps','bLock','bRec'].forEach(id=>$(id).disabled=false);
+    v.onloadedmetadata=()=>{fit();draw();};setTimeout(()=>{fit();draw();},500);
+  }catch(e){log('カメラを開けない',e.name+'：'+e.message);alert('カメラを開けませんでした：'+e.name+'\n'+e.message);}
+};
+function stopCam(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track=null;v.srcObject=null;['bStop','bSnap','bCaps','bLock','bRec'].forEach(id=>$(id).disabled=true);}
+$('bStop').onclick=stopCam;
+
+// 2. ガイド（コートの角とセンターラインの両端。画面に対する割合で持つ）
+const DEF={c:[[.12,.42],[.88,.42],[.99,.92],[.01,.92]],m:[[.5,.42],[.5,.92]]};
+let G=store('be_cam_guide')||JSON.parse(JSON.stringify(DEF)),showG=true,showGrid=false,drag=null;
+function fit(){const r=v.getBoundingClientRect();ov.width=r.width*devicePixelRatio;ov.height=r.height*devicePixelRatio;}
+function P(p){return [p[0]*ov.width,p[1]*ov.height];}
+function draw(){
+  ctx.clearRect(0,0,ov.width,ov.height);const d=devicePixelRatio;
+  if(showGrid){ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1*d;for(const f of [1/3,2/3]){ctx.beginPath();ctx.moveTo(f*ov.width,0);ctx.lineTo(f*ov.width,ov.height);ctx.moveTo(0,f*ov.height);ctx.lineTo(ov.width,f*ov.height);ctx.stroke();}}
+  if(!showG)return;
+  ctx.lineWidth=2.5*d;ctx.strokeStyle='rgba(79,195,247,.9)';ctx.beginPath();G.c.forEach((p,i)=>{const [x,y]=P(p);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(...P(G.m[0]));ctx.lineTo(...P(G.m[1]));ctx.stroke();
+  // 中央の円の目安（センターラインの中点）
+  const mx=(G.m[0][0]+G.m[1][0])/2,my=(G.m[0][1]+G.m[1][1])/2;ctx.beginPath();ctx.arc(mx*ov.width,my*ov.height,6*d,0,7);ctx.stroke();
+  const M=.03;
+  [...G.c,...G.m].forEach(p=>{const [x,y]=P(p);const edge=p[0]<M||p[0]>1-M||p[1]<M||p[1]>1-M;ctx.fillStyle=edge?'#ff5c5c':'#ffd166';ctx.beginPath();ctx.arc(x,y,9*d,0,7);ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=1.5*d;ctx.stroke();});
+  ctx.lineWidth=2.5*d;
+}
+function pt(e){const r=ov.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return [(t.clientX-r.left)/r.width,(t.clientY-r.top)/r.height];}
+function down(e){if(!showG)return;const q=pt(e);let best=null,bd=1e9;[...G.c.map((p,i)=>['c',i]),...G.m.map((p,i)=>['m',i])].forEach(([k,i])=>{const p=G[k][i];const dd=Math.hypot((p[0]-q[0])*ov.width,(p[1]-q[1])*ov.height);if(dd<bd){bd=dd;best=[k,i];}});if(bd<60*devicePixelRatio){drag=best;e.preventDefault();}}
+function move(e){if(!drag)return;const q=pt(e);G[drag[0]][drag[1]]=[Math.min(1,Math.max(0,q[0])),Math.min(1,Math.max(0,q[1]))];draw();e.preventDefault();}
+function up(){if(drag){store('be_cam_guide',G);const M=.03;const tight=G.c.filter(p=>p[0]<M||p[0]>1-M||p[1]<M||p[1]>1-M).length;log('ガイド（角の位置、割合）',G.c.map(p=>p.map(x=>x.toFixed(3)).join(',')).join(' / ')+(tight?`　※画面の端に近い角 ${tight} 個`:''));}drag=null;}
+ov.addEventListener('touchstart',down,{passive:false});ov.addEventListener('touchmove',move,{passive:false});ov.addEventListener('touchend',up);
+ov.addEventListener('mousedown',down);addEventListener('mousemove',move);addEventListener('mouseup',up);
+addEventListener('resize',()=>{fit();draw();});
+$('bGuide').onclick=()=>{showG=!showG;$('bGuide').textContent='ガイドの表示：'+(showG?'オン':'オフ');draw();};
+$('bGrid').onclick=()=>{showGrid=!showGrid;$('bGrid').textContent='三分割の線：'+(showGrid?'オン':'オフ');draw();};
+$('bReset').onclick=()=>{G=JSON.parse(JSON.stringify(DEF));store('be_cam_guide',G);draw();};
+$('bSnap').onclick=()=>{
+  const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);
+  c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`camtest_${c.width}x${c.height}.jpg`;a.textContent=`静止画（${c.width}×${c.height}、${(b.size/1e6).toFixed(1)} MB）を保存`;$('dl').prepend(a,document.createElement('br'));a.click();log('静止画',`${c.width}×${c.height}`);},'image/jpeg',.92);
+};
+
+// 3. 設定
+$('bCaps').onclick=()=>{
+  if(!track)return;let caps={},s=track.getSettings();try{caps=track.getCapabilities?track.getCapabilities():{};}catch(e){caps={error:String(e)};}
+  const keys=['width','height','frameRate','aspectRatio','facingMode','focusMode','focusDistance','exposureMode','exposureCompensation','exposureTime','iso','whiteBalanceMode','colorTemperature','zoom','torch'];
+  const lines=['【できること（getCapabilities）】'];keys.forEach(k=>{if(k in caps)lines.push(`${k}: ${JSON.stringify(caps[k])}`);});
+  if(lines.length===1)lines.push('（この端末・ブラウザは調べる機能に対応していません：'+(track.getCapabilities?'空':'getCapabilities なし')+'）');
+  lines.push('【今の設定（getSettings）】');Object.entries(s).forEach(([k,x])=>lines.push(`${k}: ${JSON.stringify(x)}`));
+  $('caps').textContent=lines.join('\n');log('使える設定',Object.keys(caps).join(',')||'調べられない');log('最大の大きさ',caps.width?`${caps.width.max}×${caps.height.max}`:'不明');
+};
+$('bLock').onclick=async()=>{
+  if(!track)return;const out=[];
+  for(const [name,c] of [['ピントの固定',{focusMode:'manual'}],['ピント（遠く固定）',{focusMode:'continuous'}],['露出の固定',{exposureMode:'manual'}],['ホワイトバランスの固定',{whiteBalanceMode:'manual'}]]){
+    try{await track.applyConstraints({advanced:[c]});const s=track.getSettings();const k=Object.keys(c)[0];out.push(`${name}：${s[k]===c[k]?'できた':'効かない'}（今：${s[k]}）`);}catch(e){out.push(`${name}：できない（${e.name}）`);}
+  }
+  $('caps').textContent+='\n【固定の試し】\n'+out.join('\n');log('固定の試し',out.join(' / '));
+};
+
+// 4. 録画
+$('bRec').onclick=()=>{
+  if(!stream||typeof MediaRecorder==='undefined')return;const mime=$('mime').value;chunks=[];
+  try{rec=new MediaRecorder(stream,mime&&mime[0]!=='（'?{mimeType:mime,videoBitsPerSecond:40e6}:{});}catch(e){try{rec=new MediaRecorder(stream);}catch(e2){log('録画を始められない',e2.message);return;}}
+  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+  rec.onstop=finish;rec.onerror=e=>log('録画のエラー',String(e.error||e));
+  rec.start(1000);recStart=performance.now();$('bRec').disabled=true;$('bRecStop').disabled=false;
+  const dur=+$('dur').value*1000;
+  recTimer=setInterval(()=>{const t=(performance.now()-recStart)/1000;const mb=chunks.reduce((a,b)=>a+b.size,0)/1e6;$('recState').textContent=`録画中 ${t.toFixed(0)} 秒・${mb.toFixed(1)} MB`;if(t*1000>=dur)rec.state==='recording'&&rec.stop();},500);
+  log('録画を開始',`${rec.mimeType||mime}（求めたビットレート 40 Mbps）`);
+};
+$('bRecStop').onclick=()=>{if(rec&&rec.state==='recording')rec.stop();};
+function finish(){
+  clearInterval(recTimer);$('bRec').disabled=false;$('bRecStop').disabled=true;
+  const sec=(performance.now()-recStart)/1000;const blob=new Blob(chunks,{type:rec.mimeType||'video/mp4'});const mb=blob.size/1e6;
+  $('recState').textContent='終了';
+  const t=document.createElement('video');t.muted=true;t.playsInline=true;t.src=URL.createObjectURL(blob);
+  t.onloadedmetadata=()=>{
+    const info=`形式 ${blob.type}\n録画の長さ ${sec.toFixed(1)} 秒（ファイル上 ${isFinite(t.duration)?t.duration.toFixed(1):'不明'} 秒）\n解像度 ${t.videoWidth}×${t.videoHeight}\n大きさ ${mb.toFixed(1)} MB（1 分あたり ${(mb/sec*60).toFixed(0)} MB、90 分なら約 ${(mb/sec*5400/1000).toFixed(1)} GB）\n実際のビットレート 約 ${(blob.size*8/sec/1e6).toFixed(1)} Mbps`;
+    $('recInfo').textContent=info;log('録画の結果',info.replace(/\n/g,' / '));
+  };
+  t.onerror=()=>{$('recInfo').textContent=`再生して調べられませんでした（大きさ ${mb.toFixed(1)} MB、${sec.toFixed(1)} 秒）`;log('録画の結果',`再生不可・${mb.toFixed(1)} MB・${sec.toFixed(1)} 秒`);};
+  const a=document.createElement('a');a.href=t.src;a.download=`camtest_rec.${(blob.type.includes('webm')?'webm':'mp4')}`;a.textContent=`録画（${mb.toFixed(1)} MB）を保存`;$('dl').prepend(a,document.createElement('br'));
+}
+
+// 5. 画面を点けたまま
+$('bWake').onclick=async()=>{
+  try{if(!('wakeLock' in navigator))throw new Error('この端末は未対応');wake=await navigator.wakeLock.request('screen');$('wakeState').textContent='点けたまま';$('wakeState').className='pill ok';log('画面の点灯の固定','できた');
+    wake.addEventListener('release',()=>{$('wakeState').textContent='解除された';$('wakeState').className='pill warn';log('画面の点灯の固定','解除された');});
+  }catch(e){$('wakeState').textContent='できない';$('wakeState').className='pill ng';log('画面の点灯の固定','できない（'+e.message+'）');}
+};
+document.addEventListener('visibilitychange',()=>log('画面の状態',document.visibilityState+(rec&&rec.state==='recording'?'（録画中）':'')));
+
+$('bCopy').onclick=async()=>{const txt=LOG.join('\n');try{await navigator.clipboard.writeText(txt);$('bCopy').textContent='コピーしました';}catch(e){const r=document.createRange();r.selectNodeContents($('log'));const s=getSelection();s.removeAllRanges();s.addRange(r);$('bCopy').textContent='選んだので「コピー」を押してください';}};
+draw();
+})();
+</script>
+</body>
+</html>
